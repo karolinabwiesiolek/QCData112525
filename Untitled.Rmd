@@ -1,0 +1,43 @@
+---
+title: "QC Data 112525"
+output: html_document
+date: "2025-11-26"
+---
+
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+
+
+
+# 1. LOAD EXCEL FILE
+df <- read_excel("112525QC.xlsx")
+
+# 2. SELECT ONLY THE TWO COLUMNS OF INTEREST + ANY IDENTIFIERS
+df2 <- df %>%
+  select(ReaderSerialNumber,
+         `QC Scan (Positive Control | Emory Release)`,
+         `QC Scan (Negative Control | Emory Release)`) 
+
+# Helper function to extract “vald” number from text
+extract_vald <- function(x) {
+  str_extract(x, '"vald":-?\\d+\\.?\\d*') %>% 
+    str_replace_all('"vald":', '') %>% 
+    as.numeric()
+}
+
+# 3. FILTER ROWS BY ANALYTE
+qc_clean <- df2 %>%
+  mutate(
+    analyte = case_when(
+      str_detect(`QC Scan (Positive Control | Emory Release)`, "FLU_B") ~ "FLU_B",
+      str_detect(`QC Scan (Positive Control | Emory Release)`, "FLU_A") ~ "FLU_A",
+      str_detect(`QC Scan (Positive Control | Emory Release)`, "COVID") ~ "COVID",
+      TRUE ~ NA_character_
+    ),
+    vald_value = extract_vald(`QC Scan (Positive Control | Emory Release)`)
+  ) %>%
+  filter(!is.na(analyte))  # keep only flu A, flu B, covid
+
